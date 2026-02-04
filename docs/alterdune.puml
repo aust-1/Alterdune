@@ -1,0 +1,206 @@
+@startuml ALTERDUNE
+
+skinparam classAttributeIconSize 0
+
+' Enums
+enum MonsterCategory {
+  NORMAL
+  MINIBOSS
+  BOSS
+}
+
+enum ItemType {
+  HEAL
+}
+
+enum BattleResult {
+  KILLED
+  SPARED
+}
+
+enum EndingType {
+  GENOCIDAL
+  PACIFIST
+  NEUTRAL
+}
+
+enum MainMenuChoice {
+  BESTIARY
+  START_BATTLE
+  PLAYER_STATS
+  ITEMS
+  QUIT
+}
+
+enum BattleChoice {
+  FIGHT
+  ACT
+  ITEM
+  MERCY
+}
+
+' Enities
+abstract class Entity {
+  -name: string
+  -hp: int
+  -maxHp: int
+  -atk: int
+  -def: int
+  +getName(): string
+  +getHp(): int
+  +getMaxHp(): int
+  +isAlive(): bool
+  +takeDamage(amount: int): void
+  +heal(amount: int): void
+}
+
+class Player extends Entity {
+  -kills: int
+  -spares: int
+  -victories: int
+  -inventory: Inventory
+  +getKills(): int
+  +getSpares(): int
+  +getVictories(): int
+  +addKill(): void
+  +addSpare(): void
+  +addVictory(): void
+  +getInventory(): Inventory
+}
+
+abstract class Monster extends Entity {
+  -category: MonsterCategory
+  -mercy: int
+  -mercyGoal: int
+  -actIds: vector<string>
+  +getCategory(): MonsterCategory
+  +getMercy(): int
+  +getMercyGoal(): int
+  +getActIds(): vector<string>
+  +canBeSpared(): bool
+  -clampMercy(): void
+  +applyMercyDelta(delta: int): void
+  +getAvailableActIds(): const std::vector<std::string>&
+  +getAllowedActCount(): int
+}
+
+class NormalMonster extends Monster
+class MiniBossMonster extends Monster
+class BossMonster extends Monster
+
+class Item {
+  -name: string
+  -type: ItemType
+  -value: int
+  +getName(): string
+  +getType(): ItemType
+  +getValue(): int
+  +apply(target: Player): void
+}
+
+class Inventory {
+  -items: map<string, InventoryEntry>
+  +getQuantity(name: string): int
+  +has(name: string): bool
+  +add(name: string, qty: int): void
+  +use(name: string, target: Player): bool
+  +listItems(): vector<Item>
+}
+
+class InventoryEntry {
+  - item: Item
+  - quantity: int
+  +getItem(): Item
+  +getQuantity(): int
+  +increase(by: int): void
+  +decrease(by: int): bool
+}
+
+class ActAction {
+  -id: string
+  -text: string
+  -mercyDelta: int
+  +getId(): string
+  +getText(): string
+  +getMercyDelta(): int
+}
+
+class ActCatalog {
+  -actions: map<string, ActAction>
+  +register(action: ActAction): void
+  +get(id: string): ActAction
+  +has(id: string): bool
+  +list(): vector<ActAction>
+}
+
+class BestiaryEntry {
+  -monsterName: string
+  -category: MonsterCategory
+  -maxHp: int
+  -atk: int
+  -def: int
+  -result: BattleResult
+}
+
+class Bestiary {
+  -entries: vector<BestiaryEntry>
+  +add(entry: BestiaryEntry): void
+  +list(): vector<BestiaryEntry>
+}
+
+' System
+class Battle {
+  -player: Player
+  -monster: Monster
+  -catalog: ActCatalog
+  +start(): BattleResult
+  +playerFight(): void
+  +playerAct(actId: string): void
+  +playerItem(itemName: string): void
+  +playerMercy(): bool
+  +monsterTurn(): void
+}
+
+class Game {
+  -player: Player
+  -bestiary: Bestiary
+  -catalog: ActCatalog
+  -monsters: vector<Monster>
+  +run(): void
+  +mainMenu(): void
+  +startBattle(): void
+  +showStats(): void
+  +showItems(): void
+  +showBestiary(): void
+  +checkEndings(): void
+}
+
+class RandomService {
+  +rollDamage(maxHp: int): int
+}
+
+class CsvLoader {
+  +loadItems(path: string): Inventory
+  +loadMonsters(path: string, catalog: ActCatalog): vector<Monster>
+  -parseItemRow(cols: vector<string>): pair<Item, int>
+  -parseMonsterRow(cols: vector<string>, catalog: ActCatalog): Monster
+}
+
+' Relationships
+Player *-- Inventory
+Inventory o-- Item
+ActCatalog o-- ActAction
+Bestiary o-- BestiaryEntry
+
+Game *-- Player
+Game *-- Bestiary
+Game *-- ActCatalog
+Game o-- Monster
+Game ..> CsvLoader
+
+Battle *-- Player
+Battle *-- Monster
+Battle ..> ActCatalog
+Battle ..> RandomService
+
+@enduml
