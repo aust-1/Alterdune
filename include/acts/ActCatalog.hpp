@@ -8,11 +8,11 @@
 
 class ActCatalog {
 public:
-  void add(const ActAction &action);
-  bool has(const std::string &id) const;
-  ActAction get(const std::string &id) const;
+  void add(const ActAction &rAction);
+  bool has(const std::string &rId) const;
+  ActAction get(const std::string &rId) const;
   std::vector<ActAction> list() const;
 
 private:
-  std::map<std::string, ActAction> _actions;
+  std::map<std::string, ActAction> mActions;
 };
