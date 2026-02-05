@@ -1,1 +1,4 @@
 nom;type;valeur;quantite
+Potion;HEAL;15;3
+Snack;HEAL;8;5
+SuperPotion;HEAL;30;1

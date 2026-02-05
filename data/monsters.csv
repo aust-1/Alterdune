@@ -1,1 +1,4 @@
 categorie;nom;hp;atk;def;mercyGoal;act1;act2;act3;act4
+NORMAL;Froggit;30;7;1;100;COMPLIMENT;OBSERVE;-;-
+MINIBOSS;MimicBox;45;10;2;100;OBSERVE;PET;THREATEN;-
+BOSS;QueenByte;80;15;4;100;REASON;DANCE;JOKE;INSULT
