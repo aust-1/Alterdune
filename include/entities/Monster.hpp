@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -11,11 +12,14 @@ public:
   Monster(const std::string &rName, int maxHp, int atk, int def,
           MonsterCategory category, int mercyGoal,
           const std::vector<std::string> &rActIds);
+  virtual ~Monster() = default;
 
   MonsterCategory getCategory() const;
   int getMercy() const;
   int getMercyGoal() const;
   const std::vector<std::string> &getActIds() const;
+  virtual int getAllowedActCount() const = 0;
+  virtual std::unique_ptr<Monster> clone() const = 0;
 
   void setMercy(int value);
 

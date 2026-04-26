@@ -1,5 +1,7 @@
 #include "../../include/acts/ActCatalog.hpp"
 
+#include <stdexcept>
+
 void ActCatalog::add(const ActAction &rAction) {
   mActions[rAction.getId()] = rAction;
 }
@@ -8,10 +10,10 @@ bool ActCatalog::has(const std::string &rId) const {
   return mActions.find(rId) != mActions.end();
 }
 
-ActAction ActCatalog::get(const std::string &rId) const {
+const ActAction &ActCatalog::get(const std::string &rId) const {
   auto it = mActions.find(rId);
   if (it == mActions.end()) {
-    return ActAction("", "", 0);
+    throw std::runtime_error("Unknown ACT id: " + rId);
   }
   return it->second;
 }

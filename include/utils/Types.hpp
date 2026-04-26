@@ -4,4 +4,4 @@ enum class MonsterCategory { NORMAL, MINIBOSS, BOSS };
 
 enum class ItemType { HEAL };
 
-enum class CombatResult { KILLED, SPARED };
+enum class CombatResult { KILLED, SPARED, PLAYER_DEFEATED };

@@ -28,6 +28,9 @@ bool Inventory::use(const std::string &rName, Player &rTarget) {
   }
   defIt->second.apply(rTarget);
   --it->second;
+  if (it->second <= 0) {
+    mItems.erase(it);
+  }
   return true;
 }
 
@@ -35,7 +38,9 @@ std::vector<Item> Inventory::listItems() const {
   std::vector<Item> result;
   result.reserve(mItemDefs.size());
   for (const auto &entry : mItemDefs) {
-    result.push_back(entry.second);
+    if (getQuantity(entry.first) > 0) {
+      result.push_back(entry.second);
+    }
   }
   return result;
 }

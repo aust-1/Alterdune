@@ -4,6 +4,7 @@
 #include <iostream>
 #include <limits>
 #include <random>
+#include <string>
 #include <utility>
 
 #include "../../include/systems/Combat.hpp"
@@ -19,15 +20,54 @@ int readMenuChoice() {
   }
   return choice;
 }
+
+const char *categoryToString(MonsterCategory category) {
+  switch (category) {
+  case MonsterCategory::NORMAL:
+    return "NORMAL";
+  case MonsterCategory::MINIBOSS:
+    return "MINIBOSS";
+  case MonsterCategory::BOSS:
+    return "BOSS";
+  }
+  return "INCONNUE";
+}
+
+std::string itemDescription(const Item &rItem) {
+  if (rItem.getType() == ItemType::HEAL) {
+    return "soigne " + std::to_string(rItem.getValue()) + " HP";
+  }
+  return "effet inconnu";
+}
 } // namespace
 
-Game::Game(Player player) : mPlayer(std::move(player)) {}
+Game::Game(Player player) : mPlayer(std::move(player)), mIsGameOver(false) {}
 
 void Game::run() { mainMenu(); }
 
+void Game::showStartupSummary() const {
+  std::cout << "\n=== Partie initialisee ===\n";
+  std::cout << "Nom: " << mPlayer.getName() << "\n";
+  std::cout << "HP: " << mPlayer.getHp() << "/" << mPlayer.getMaxHp() << "\n";
+  std::cout << "Items:\n";
+
+  const Inventory &rInventory = mPlayer.getInventory();
+  const std::vector<Item> items = rInventory.listItems();
+  if (items.empty()) {
+    std::cout << "- Aucun item\n";
+    return;
+  }
+
+  for (const Item &rItem : items) {
+    std::cout << "- " << rItem.getName() << " x"
+              << rInventory.getQuantity(rItem.getName()) << " ("
+              << itemDescription(rItem) << ")\n";
+  }
+}
+
 void Game::mainMenu() {
   bool isRunning = true;
-  while (isRunning) {
+  while (isRunning && !mIsGameOver) {
     if (mPlayer.getVictories() >= 10) {
       checkEndings();
       return;
@@ -47,7 +87,9 @@ void Game::mainMenu() {
       showBestiary();
       break;
     case 2:
-      startCombat();
+      if (!startCombat()) {
+        isRunning = false;
+      }
       break;
     case 3:
       showStats();
@@ -65,35 +107,39 @@ void Game::mainMenu() {
   }
 }
 
-void Game::startCombat() {
+bool Game::startCombat() {
   if (mMonsters.empty()) {
     std::cout << "Aucun monstre disponible.\n";
-    return;
+    return true;
   }
 
   static thread_local std::mt19937 sRng(std::random_device{}());
   std::uniform_int_distribution<std::size_t> dist(0, mMonsters.size() - 1);
-  Monster& rMonster = *mMonsters[dist(sRng)];
+  std::unique_ptr<Monster> monster = mMonsters[dist(sRng)]->clone();
+  Monster &rMonster = *monster;
+
   Combat combat(mPlayer, rMonster, mCatalog);
   CombatResult result = combat.start();
-  if (!mPlayer.isAlive()) {
+
+  if (result == CombatResult::PLAYER_DEFEATED || !mPlayer.isAlive()) {
+    mIsGameOver = true;
     std::cout << "Defaite.\n";
-    return;
+    return false;
   }
 
   if (result == CombatResult::KILLED) {
     mPlayer.addKill();
-    mPlayer.addVictory();
-  } else {
+  } else if (result == CombatResult::SPARED) {
     mPlayer.addSpare();
-    mPlayer.addVictory();
   }
+  mPlayer.addVictory();
 
   BestiaryEntry entry(rMonster.getName(), rMonster.getCategory(),
                       rMonster.getMaxHp(), rMonster.getAtk(), rMonster.getDef(),
                       result);
   mBestiary.add(entry);
   std::cout << "Combat termine. Victoires: " << mPlayer.getVictories() << "\n";
+  return true;
 }
 
 void Game::showStats() const {
@@ -105,17 +151,41 @@ void Game::showStats() const {
   std::cout << "Victoires: " << mPlayer.getVictories() << "/10\n";
 }
 
-void Game::showItems() const {
-  std::cout << "\n=== Items ===\n";
-  const Inventory &rInventory = mPlayer.getInventory();
-  const std::vector<Item> items = rInventory.listItems();
-  if (items.empty()) {
-    std::cout << "Inventaire vide.\n";
-    return;
-  }
-  for (const Item &rItem : items) {
-    std::cout << "- " << rItem.getName() << " x"
-              << rInventory.getQuantity(rItem.getName()) << "\n";
+void Game::showItems() {
+  while (true) {
+    std::cout << "\n=== Items ===\n";
+    Inventory &rInventory = mPlayer.getInventory();
+    const std::vector<Item> items = rInventory.listItems();
+    if (items.empty()) {
+      std::cout << "Inventaire vide.\n";
+      return;
+    }
+
+    for (size_t i = 0; i < items.size(); ++i) {
+      const Item &rItem = items[i];
+      std::cout << (i + 1) << ") " << rItem.getName() << " x"
+                << rInventory.getQuantity(rItem.getName()) << " ("
+                << itemDescription(rItem) << ")\n";
+    }
+    std::cout << "0) Retour\n";
+    std::cout << "> ";
+
+    int choice = readMenuChoice();
+    if (choice == 0) {
+      return;
+    }
+    if (choice < 1 || choice > static_cast<int>(items.size())) {
+      std::cout << "Choix invalide.\n";
+      continue;
+    }
+
+    const Item &rItem = items[static_cast<size_t>(choice - 1)];
+    if (!rInventory.use(rItem.getName(), mPlayer)) {
+      std::cout << "Item indisponible.\n";
+      continue;
+    }
+    std::cout << rItem.getName() << " utilise. HP: " << mPlayer.getHp() << "/"
+              << mPlayer.getMaxHp() << "\n";
   }
 }
 
@@ -127,11 +197,12 @@ void Game::showBestiary() const {
     return;
   }
   for (const BestiaryEntry &rEntry : rEntries) {
-    std::cout << "- " << rEntry.getMonsterName() << " | HP "
+    std::cout << "- " << rEntry.getMonsterName() << " | "
+              << categoryToString(rEntry.getCategory()) << " | HP "
               << rEntry.getMaxHp() << " | ATK " << rEntry.getAtk() << " | DEF "
               << rEntry.getDef() << " | Resultat "
               << (rEntry.getResult() == CombatResult::KILLED ? "Tue"
-                                                             : "Epargne")
+                                                              : "Epargne")
               << "\n";
   }
 }

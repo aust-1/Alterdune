@@ -14,10 +14,11 @@ public:
   Game(Player player);
 
   void run();
+  void showStartupSummary() const;
   void mainMenu();
-  void startCombat();
+  bool startCombat();
   void showStats() const;
-  void showItems() const;
+  void showItems();
   void showBestiary() const;
   void checkEndings() const;
 
@@ -35,4 +36,5 @@ private:
   Bestiary mBestiary;
   ActCatalog mCatalog;
   std::vector<std::unique_ptr<Monster>> mMonsters;
+  bool mIsGameOver;
 };

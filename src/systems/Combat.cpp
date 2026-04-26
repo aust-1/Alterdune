@@ -1,5 +1,7 @@
 #include "../../include/systems/Combat.hpp"
 
+#include <algorithm>
+#include <cstddef>
 #include <iostream>
 #include <limits>
 
@@ -45,10 +47,10 @@ CombatResult Combat::start() {
       std::cout << "Choisir une action:\n";
       int index = 1;
       std::vector<std::string> actList;
-      for (const std::string &rActId : rActIds) {
-        if (rActId == "-") {
-          continue;
-        }
+      const size_t maxActs =
+          std::min(rActIds.size(), static_cast<size_t>(mRMonster.getAllowedActCount()));
+      for (size_t i = 0; i < maxActs; ++i) {
+        const std::string &rActId = rActIds[i];
         if (!mRCatalog.has(rActId)) {
           continue;
         }
@@ -110,11 +112,13 @@ CombatResult Combat::start() {
 
   if (!mRPlayer.isAlive()) {
     std::cout << "Vous avez ete vaincu.\n";
+    return CombatResult::PLAYER_DEFEATED;
   }
   if (!mRMonster.isAlive()) {
     std::cout << "Vous avez vaincu le monstre.\n";
+    return CombatResult::KILLED;
   }
-  return CombatResult::KILLED;
+  return CombatResult::SPARED;
 }
 
 void Combat::playerFight() {
@@ -125,9 +129,10 @@ void Combat::playerFight() {
 
 void Combat::playerAct(const std::string &rActId) {
   if (!mRCatalog.has(rActId)) {
+    std::cout << "Action ACT inconnue.\n";
     return;
   }
-  ActAction action = mRCatalog.get(rActId);
+  const ActAction &action = mRCatalog.get(rActId);
   mRMonster.setMercy(mRMonster.getMercy() + action.getMercyDelta());
   std::cout << action.getText() << "\n";
   std::cout << "Mercy: " << mRMonster.getMercy() << "/"
