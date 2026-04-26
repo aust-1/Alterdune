@@ -46,7 +46,7 @@ Game::Game(Player player) : mPlayer(std::move(player)), mIsGameOver(false) {}
 void Game::run() { mainMenu(); }
 
 void Game::showStartupSummary() const {
-  std::cout << "\n=== Partie initialisee ===\n";
+  std::cout << "\n=== Partie initialisée ===\n";
   std::cout << "Nom: " << mPlayer.getName() << "\n";
   std::cout << "HP: " << mPlayer.getHp() << "/" << mPlayer.getMaxHp() << "\n";
   std::cout << "Items:\n";
@@ -75,7 +75,7 @@ void Game::mainMenu() {
 
     std::cout << "\n=== ALTERDUNE ===\n";
     std::cout << "1) Bestiaire\n";
-    std::cout << "2) Demarrer un combat\n";
+    std::cout << "2) Démarrer un combat\n";
     std::cout << "3) Statistiques du personnage\n";
     std::cout << "4) Items\n";
     std::cout << "5) Quitter\n";
@@ -123,7 +123,7 @@ bool Game::startCombat() {
 
   if (result == CombatResult::PLAYER_DEFEATED || !mPlayer.isAlive()) {
     mIsGameOver = true;
-    std::cout << "Defaite.\n";
+    std::cout << "Défaite.\n";
     return false;
   }
 
@@ -138,7 +138,7 @@ bool Game::startCombat() {
                       rMonster.getMaxHp(), rMonster.getAtk(), rMonster.getDef(),
                       result);
   mBestiary.add(entry);
-  std::cout << "Combat termine. Victoires: " << mPlayer.getVictories() << "\n";
+  std::cout << "Combat terminé. Victoires: " << mPlayer.getVictories() << "\n";
   return true;
 }
 
@@ -146,8 +146,8 @@ void Game::showStats() const {
   std::cout << "\n=== Statistiques ===\n";
   std::cout << "Nom: " << mPlayer.getName() << "\n";
   std::cout << "HP: " << mPlayer.getHp() << "/" << mPlayer.getMaxHp() << "\n";
-  std::cout << "Tues: " << mPlayer.getKills() << "\n";
-  std::cout << "Epargnes: " << mPlayer.getSpares() << "\n";
+  std::cout << "Tués: " << mPlayer.getKills() << "\n";
+  std::cout << "Epargnés: " << mPlayer.getSpares() << "\n";
   std::cout << "Victoires: " << mPlayer.getVictories() << "/10\n";
 }
 
@@ -200,9 +200,9 @@ void Game::showBestiary() const {
     std::cout << "- " << rEntry.getMonsterName() << " | "
               << categoryToString(rEntry.getCategory()) << " | HP "
               << rEntry.getMaxHp() << " | ATK " << rEntry.getAtk() << " | DEF "
-              << rEntry.getDef() << " | Resultat "
-              << (rEntry.getResult() == CombatResult::KILLED ? "Tue"
-                                                              : "Epargne")
+              << rEntry.getDef() << " | Résultat "
+              << (rEntry.getResult() == CombatResult::KILLED ? "Tué"
+                                                             : "Epargné")
               << "\n";
   }
 }

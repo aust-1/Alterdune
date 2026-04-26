@@ -18,7 +18,7 @@ std::string readPlayerName() {
   std::string name;
   std::getline(std::cin, name);
   if (name.empty()) {
-    return "Hero";
+    return "Héro";
   }
   return name;
 }

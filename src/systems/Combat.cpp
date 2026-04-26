@@ -47,8 +47,8 @@ CombatResult Combat::start() {
       std::cout << "Choisir une action:\n";
       int index = 1;
       std::vector<std::string> actList;
-      const size_t maxActs =
-          std::min(rActIds.size(), static_cast<size_t>(mRMonster.getAllowedActCount()));
+      const size_t maxActs = std::min(
+          rActIds.size(), static_cast<size_t>(mRMonster.getAllowedActCount()));
       for (size_t i = 0; i < maxActs; ++i) {
         const std::string &rActId = rActIds[i];
         if (!mRCatalog.has(rActId)) {
@@ -95,7 +95,7 @@ CombatResult Combat::start() {
     }
     case 4:
       if (playerMercy()) {
-        std::cout << "Vous epargnez le monstre.\n";
+        std::cout << "Vous épargnez le monstre.\n";
         return CombatResult::SPARED;
       }
       std::cout << "Mercy insuffisante.\n";
@@ -111,7 +111,7 @@ CombatResult Combat::start() {
   }
 
   if (!mRPlayer.isAlive()) {
-    std::cout << "Vous avez ete vaincu.\n";
+    std::cout << "Vous avez été vaincu.\n";
     return CombatResult::PLAYER_DEFEATED;
   }
   if (!mRMonster.isAlive()) {
@@ -124,7 +124,7 @@ CombatResult Combat::start() {
 void Combat::playerFight() {
   int damage = mRandomService.rollDamage(mRMonster.getMaxHp());
   mRMonster.takeDamage(damage);
-  std::cout << "Degats infliges: " << damage << "\n";
+  std::cout << "Dégâts infligés: " << damage << "\n";
 }
 
 void Combat::playerAct(const std::string &rActId) {
@@ -159,5 +159,5 @@ void Combat::monsterTurn() {
   }
   int damage = mRandomService.rollDamage(mRPlayer.getMaxHp());
   mRPlayer.takeDamage(damage);
-  std::cout << mRMonster.getName() << " attaque. Degats: " << damage << "\n";
+  std::cout << mRMonster.getName() << " attaque. Dégâts: " << damage << "\n";
 }

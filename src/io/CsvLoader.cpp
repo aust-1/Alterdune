@@ -1,7 +1,7 @@
 #include "../../include/io/CsvLoader.hpp"
 
-#include <cstddef>
 #include <cctype>
+#include <cstddef>
 #include <fstream>
 #include <memory>
 #include <sstream>
@@ -76,9 +76,9 @@ int expectedActCount(MonsterCategory category) {
   return 0;
 }
 
-std::vector<std::string>
-parseActIds(const std::vector<std::string> &rParts, MonsterCategory category,
-            const ActCatalog &rCatalog) {
+std::vector<std::string> parseActIds(const std::vector<std::string> &rParts,
+                                     MonsterCategory category,
+                                     const ActCatalog &rCatalog) {
   if (rParts.size() != 10) {
     throw std::runtime_error("Malformed monsters line: expected 10 columns");
   }

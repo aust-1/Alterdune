@@ -1,4 +1,7 @@
 nom;type;valeur;quantite
-Potion;HEAL;15;3
-Snack;HEAL;8;5
-SuperPotion;HEAL;30;1
+Snack;HEAL;6;6
+Potion;HEAL;12;4
+Bandage;HEAL;18;2
+SuperPotion;HEAL;25;2
+ElixirEco;HEAL;10;3
+MegaElixir;HEAL;30;1
