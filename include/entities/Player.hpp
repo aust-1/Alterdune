@@ -16,6 +16,7 @@ public:
   void addKill();
   void addSpare();
   void addVictory();
+  void heal(int amount);
 
   Inventory &getInventory();
   const Inventory &getInventory() const;

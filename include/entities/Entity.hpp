@@ -13,9 +13,11 @@ public:
   int getAtk() const;
   int getDef() const;
 
-  void setHp(int value);
   bool isAlive() const;
   void takeDamage(int amount);
+
+protected:
+  void setHp(int value);
 
 private:
   std::string mName;

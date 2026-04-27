@@ -14,6 +14,6 @@ int Item::getValue() const { return mValue; }
 
 void Item::apply(Player &rTarget) const {
   if (mType == ItemType::HEAL) {
-    rTarget.setHp(rTarget.getHp() + mValue);
+    rTarget.heal(mValue);
   }
 }

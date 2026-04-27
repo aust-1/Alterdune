@@ -15,6 +15,13 @@ void Player::addSpare() { ++mSpares; }
 
 void Player::addVictory() { ++mVictories; }
 
+void Player::heal(int amount) {
+  if (amount <= 0) {
+    return;
+  }
+  setHp(getHp() + amount);
+}
+
 Inventory &Player::getInventory() { return mInventory; }
 
 const Inventory &Player::getInventory() const { return mInventory; }

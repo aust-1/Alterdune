@@ -13,166 +13,175 @@ enum ItemType {
   HEAL
 }
 
-enum BattleResult {
+enum CombatResult {
   KILLED
   SPARED
+  PLAYER_DEFEATED
 }
 
-enum EndingType {
-  GENOCIDAL
-  PACIFIST
-  NEUTRAL
-}
-
-enum MainMenuChoice {
-  BESTIARY
-  START_BATTLE
-  PLAYER_STATS
-  ITEMS
-  QUIT
-}
-
-enum BattleChoice {
-  FIGHT
-  ACT
-  ITEM
-  MERCY
-}
-
-' Enities
-abstract class Entity {
-  -name: string
-  -hp: int
-  -maxHp: int
-  -atk: int
-  -def: int
-  +getName(): string
+' Entities
+class Entity {
+  -mName: std::string
+  -mHp: int
+  -mMaxHp: int
+  -mAtk: int
+  -mDef: int
+  +Entity(rName: const std::string&, maxHp: int, atk: int, def: int)
+  +getName(): const std::string&
   +getHp(): int
   +getMaxHp(): int
+  +getAtk(): int
+  +getDef(): int
+  #setHp(value: int): void
   +isAlive(): bool
   +takeDamage(amount: int): void
-  +heal(amount: int): void
 }
 
 class Player extends Entity {
-  -kills: int
-  -spares: int
-  -victories: int
-  -inventory: Inventory
+  -mKills: int
+  -mSpares: int
+  -mVictories: int
+  -mInventory: Inventory
+  +Player(rName: const std::string&, maxHp: int, atk: int, def: int)
   +getKills(): int
   +getSpares(): int
   +getVictories(): int
   +addKill(): void
   +addSpare(): void
   +addVictory(): void
-  +getInventory(): Inventory
+  +heal(amount: int): void
+  +getInventory(): Inventory&
 }
 
 abstract class Monster extends Entity {
-  -category: MonsterCategory
-  -mercy: int
-  -mercyGoal: int
-  -actIds: vector<string>
+  -mCategory: MonsterCategory
+  -mMercy: int
+  -mMercyGoal: int
+  -mActIds: std::vector<std::string>
+  +Monster(rName: const std::string&, maxHp: int, atk: int, def: int, category: MonsterCategory, mercyGoal: int, rActIds: const std::vector<std::string>&)
   +getCategory(): MonsterCategory
   +getMercy(): int
   +getMercyGoal(): int
-  +getActIds(): vector<string>
-  +canBeSpared(): bool
-  -clampMercy(): void
-  +applyMercyDelta(delta: int): void
-  +getAvailableActIds(): const std::vector<std::string>&
+  +getActIds(): const std::vector<std::string>&
   +getAllowedActCount(): int
+  +clone(): std::unique_ptr<Monster>
+  +setMercy(value: int): void
 }
 
-class NormalMonster extends Monster
-class MiniBossMonster extends Monster
-class BossMonster extends Monster
+class NormalMonster extends Monster {
+  +NormalMonster(rName: const std::string&, maxHp: int, atk: int, def: int, mercyGoal: int, rActIds: const std::vector<std::string>&)
+  +getAllowedActCount(): int
+  +clone(): std::unique_ptr<Monster>
+}
+
+class MiniBossMonster extends Monster {
+  +MiniBossMonster(rName: const std::string&, maxHp: int, atk: int, def: int, mercyGoal: int, rActIds: const std::vector<std::string>&)
+  +getAllowedActCount(): int
+  +clone(): std::unique_ptr<Monster>
+}
+
+class BossMonster extends Monster {
+  +BossMonster(rName: const std::string&, maxHp: int, atk: int, def: int, mercyGoal: int, rActIds: const std::vector<std::string>&)
+  +getAllowedActCount(): int
+  +clone(): std::unique_ptr<Monster>
+}
 
 class Item {
-  -name: string
-  -type: ItemType
-  -value: int
-  +getName(): string
+  -mName: std::string
+  -mType: ItemType
+  -mValue: int
+  +Item()
+  +Item(rName: const std::string&, type: ItemType, value: int)
+  +getName(): const std::string&
   +getType(): ItemType
   +getValue(): int
-  +apply(target: Player): void
+  +apply(rTarget: Player&): void
 }
 
 class Inventory {
-  -items: map<string, InventoryEntry>
-  +getQuantity(name: string): int
-  +has(name: string): bool
-  +add(name: string, qty: int): void
-  +use(name: string, target: Player): bool
-  +listItems(): vector<Item>
-}
-
-class InventoryEntry {
-  - item: Item
-  - quantity: int
-  +getItem(): Item
-  +getQuantity(): int
-  +increase(by: int): void
-  +decrease(by: int): bool
+  -mItems: std::map<std::string, int>
+  -mItemDefs: std::map<std::string, Item>
+  +getQuantity(rName: const std::string&): int
+  +add(rItem: const Item&, qty: int): void
+  +use(rName: const std::string&, rTarget: Player&): bool
+  +listItems(): std::vector<Item>
 }
 
 class ActAction {
-  -id: string
-  -text: string
-  -mercyDelta: int
-  +getId(): string
-  +getText(): string
+  -mId: std::string
+  -mText: std::string
+  -mMercyDelta: int
+  +ActAction()
+  +ActAction(rId: const std::string&, rText: const std::string&, mercyDelta: int)
+  +getId(): const std::string&
+  +getText(): const std::string&
   +getMercyDelta(): int
 }
 
 class ActCatalog {
-  -actions: map<string, ActAction>
-  +register(action: ActAction): void
-  +get(id: string): ActAction
-  +has(id: string): bool
-  +list(): vector<ActAction>
+  -mActions: std::map<std::string, ActAction>
+  +add(rAction: const ActAction&): void
+  +has(rId: const std::string&): bool
+  +get(rId: const std::string&): const ActAction&
+  +list(): std::vector<ActAction>
 }
 
 class BestiaryEntry {
-  -monsterName: string
-  -category: MonsterCategory
-  -maxHp: int
-  -atk: int
-  -def: int
-  -result: BattleResult
+  -mMonsterName: std::string
+  -mCategory: MonsterCategory
+  -mMaxHp: int
+  -mAtk: int
+  -mDef: int
+  -mResult: CombatResult
+  +BestiaryEntry(rMonsterName: const std::string&, category: MonsterCategory, maxHp: int, atk: int, def: int, result: CombatResult)
+  +getMonsterName(): const std::string&
+  +getCategory(): MonsterCategory
+  +getMaxHp(): int
+  +getAtk(): int
+  +getDef(): int
+  +getResult(): CombatResult
 }
 
 class Bestiary {
-  -entries: vector<BestiaryEntry>
-  +add(entry: BestiaryEntry): void
-  +list(): vector<BestiaryEntry>
+  -mEntries: std::vector<BestiaryEntry>
+  +add(rEntry: const BestiaryEntry&): void
+  +list(): const std::vector<BestiaryEntry>&
 }
 
-' System
-class Battle {
-  -player: Player
-  -monster: Monster
-  -catalog: ActCatalog
-  +start(): BattleResult
+' Systems
+class Combat {
+  -mRPlayer: Player&
+  -mRMonster: Monster&
+  -mRCatalog: const ActCatalog&
+  -mRandomService: RandomService
+  +Combat(rPlayer: Player&, rMonster: Monster&, rCatalog: const ActCatalog&)
+  +start(): CombatResult
   +playerFight(): void
-  +playerAct(actId: string): void
-  +playerItem(itemName: string): void
+  +playerAct(rActId: const std::string&): void
+  +playerItem(rItemName: const std::string&): void
   +playerMercy(): bool
   +monsterTurn(): void
 }
 
 class Game {
-  -player: Player
-  -bestiary: Bestiary
-  -catalog: ActCatalog
-  -monsters: vector<Monster>
+  -mPlayer: Player
+  -mBestiary: Bestiary
+  -mCatalog: ActCatalog
+  -mMonsters: std::vector<std::unique_ptr<Monster>>
+  -mIsGameOver: bool
+  +Game(player: Player)
   +run(): void
+  +showStartupSummary(): void
   +mainMenu(): void
-  +startBattle(): void
+  +startCombat(): bool
   +showStats(): void
   +showItems(): void
   +showBestiary(): void
   +checkEndings(): void
+  +getPlayer(): Player&
+  +getBestiary(): Bestiary&
+  +getCatalog(): ActCatalog&
+  +getMonsters(): std::vector<std::unique_ptr<Monster>>&
 }
 
 class RandomService {
@@ -180,27 +189,33 @@ class RandomService {
 }
 
 class CsvLoader {
-  +loadItems(path: string): Inventory
-  +loadMonsters(path: string, catalog: ActCatalog): vector<Monster>
-  -parseItemRow(cols: vector<string>): pair<Item, int>
-  -parseMonsterRow(cols: vector<string>, catalog: ActCatalog): Monster
+  +loadItems(rPath: const std::string&): Inventory
+  +loadMonsters(rPath: const std::string&, rCatalog: const ActCatalog&): std::vector<std::unique_ptr<Monster>>
 }
 
 ' Relationships
 Player *-- Inventory
-Inventory o-- Item
+Inventory *-- Item
 ActCatalog o-- ActAction
-Bestiary o-- BestiaryEntry
+Bestiary *-- BestiaryEntry
 
 Game *-- Player
 Game *-- Bestiary
 Game *-- ActCatalog
-Game o-- Monster
-Game ..> CsvLoader
+Game *-- "0..*" Monster
+Game ..> Combat
 
-Battle *-- Player
-Battle *-- Monster
-Battle ..> ActCatalog
-Battle ..> RandomService
+Combat --> Player
+Combat --> Monster
+Combat --> ActCatalog
+Combat *-- RandomService
+
+Item ..> ItemType
+Monster ..> MonsterCategory
+BestiaryEntry ..> MonsterCategory
+BestiaryEntry ..> CombatResult
+CsvLoader ..> Inventory
+CsvLoader ..> Monster
+CsvLoader ..> ActCatalog
 
 @enduml
