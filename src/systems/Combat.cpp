@@ -178,7 +178,7 @@ CombatResult Combat::start() {
 }
 
 void Combat::playerFight() {
-  int damage = mRandomService.rollDamage(mRMonster.getMaxHp());
+  int damage = mRandomService.rollDamage(mRPlayer.getAtk(), mRMonster.getDef());
   mRMonster.takeDamage(damage);
   pushEvent("Vous frappez et infligez " + std::to_string(damage) + " dégâts.");
 }
@@ -221,7 +221,7 @@ void Combat::monsterTurn() {
     return;
   }
 
-  int damage = mRandomService.rollDamage(mRPlayer.getMaxHp());
+  int damage = mRandomService.rollDamage(mRMonster.getAtk(), mRPlayer.getDef());
   mRPlayer.takeDamage(damage);
   pushEvent(mRMonster.getName() + " attaque et inflige " +
             std::to_string(damage) + " dégâts.");

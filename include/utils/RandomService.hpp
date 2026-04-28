@@ -2,5 +2,5 @@
 
 class RandomService {
 public:
-  int rollDamage(int maxHp) const;
+  int rollDamage(int atk, int def) const;
 };
