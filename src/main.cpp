@@ -8,6 +8,10 @@
 #include <utility>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 namespace {
 bool isFileNotFoundError(const std::string &rMessage) {
   return rMessage.find("file not found") != std::string::npos;
@@ -61,6 +65,11 @@ loadMonstersWithFallback(const CsvLoader &rLoader, const ActCatalog &rCatalog) {
 
 int main() {
   try {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
+
     const std::string playerName = readPlayerName();
     Player player(playerName, 30, 5, 2);
     Game game(std::move(player));
