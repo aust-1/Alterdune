@@ -2,148 +2,211 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <iostream>
-#include <limits>
+#include <string>
+#include <vector>
 
 namespace {
-int readMenuChoice() {
-  int choice = 0;
-  std::cin >> choice;
-  if (!std::cin) {
-    std::cin.clear();
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    return -1;
+std::string itemDescription(const Item &rItem) {
+  if (rItem.getType() == ItemType::HEAL) {
+    return "Heal " + std::to_string(rItem.getValue()) + " HP";
   }
-  return choice;
+  return "Unknown effect";
 }
 } // namespace
 
-Combat::Combat(Player &rPlayer, Monster &rMonster, const ActCatalog &rCatalog)
-    : mRPlayer(rPlayer), mRMonster(rMonster), mRCatalog(rCatalog) {}
+Combat::Combat(Player &rPlayer, Monster &rMonster, const ActCatalog &rCatalog,
+               TerminalUI &rUi)
+    : mRPlayer(rPlayer), mRMonster(rMonster), mRCatalog(rCatalog), mRUi(rUi) {}
 
 CombatResult Combat::start() {
-  std::cout << "\n=== Combat ===\n";
-  while (mRPlayer.isAlive() && mRMonster.isAlive()) {
-    std::cout << "\n"
-              << mRPlayer.getName() << " HP " << mRPlayer.getHp() << "/"
-              << mRPlayer.getMaxHp() << "\n";
-    std::cout << mRMonster.getName() << " HP " << mRMonster.getHp() << "/"
-              << mRMonster.getMaxHp() << " | Mercy " << mRMonster.getMercy()
-              << "/" << mRMonster.getMercyGoal() << "\n";
-    std::cout << "1) FIGHT  2) ACT  3) ITEM  4) MERCY\n";
-    std::cout << "> ";
+  mEventLog.clear();
+  pushEvent("Le combat commence contre " + mRMonster.getName() + ".");
 
-    int choice = readMenuChoice();
+  while (mRPlayer.isAlive() && mRMonster.isAlive()) {
+    mRUi.printBanner("COMBAT", "Affrontement contre " + mRMonster.getName());
+    mRUi.printProgressBar(mRPlayer.getName() + " HP", mRPlayer.getHp(),
+                          mRPlayer.getMaxHp());
+    mRUi.printProgressBar(mRMonster.getName() + " HP", mRMonster.getHp(),
+                          mRMonster.getMaxHp());
+    mRUi.printProgressBar("Mercy", mRMonster.getMercy(),
+                          mRMonster.getMercyGoal());
+
+    if (!mEventLog.empty()) {
+      mRUi.printSection("Journal");
+      const size_t first = mEventLog.size() > 4 ? mEventLog.size() - 4 : 0;
+      for (size_t i = first; i < mEventLog.size(); ++i) {
+        mRUi.printInfo(mEventLog[i]);
+      }
+    }
+
+    mRUi.printSection("Actions");
+    mRUi.printMenu({"FIGHT", "ACT", "ITEM", "MERCY"});
+    mRUi.printPrompt("Votre choix [1-4] > ");
+
+    const int choice = mRUi.readMenuChoice();
+    if (choice == TerminalUI::kInputClosed) {
+      mRUi.printWarning("Flux d'entrée fermé pendant le combat.");
+      return CombatResult::PLAYER_DEFEATED;
+    }
+
+    bool playerSpentTurn = false;
+
     switch (choice) {
     case 1:
       playerFight();
+      playerSpentTurn = true;
       break;
     case 2: {
       const std::vector<std::string> &rActIds = mRMonster.getActIds();
       if (rActIds.empty()) {
-        std::cout << "Aucune action ACT disponible.\n";
+        mRUi.printWarning("Aucune action ACT disponible.");
         break;
       }
-      std::cout << "Choisir une action:\n";
-      int index = 1;
+
       std::vector<std::string> actList;
+      std::vector<std::string> actMenu;
       const size_t maxActs = std::min(
           rActIds.size(), static_cast<size_t>(mRMonster.getAllowedActCount()));
+
       for (size_t i = 0; i < maxActs; ++i) {
         const std::string &rActId = rActIds[i];
         if (!mRCatalog.has(rActId)) {
           continue;
         }
-        std::cout << index << ") " << rActId << "\n";
+
+        const ActAction &action = mRCatalog.get(rActId);
+        actMenu.push_back(rActId + " (Mercy " +
+                          (action.getMercyDelta() >= 0 ? "+" : "") +
+                          std::to_string(action.getMercyDelta()) + ")");
         actList.push_back(rActId);
-        ++index;
       }
+
       if (actList.empty()) {
-        std::cout << "Aucune action ACT valide.\n";
+        mRUi.printWarning("Aucune action ACT valide.");
         break;
       }
-      std::cout << "> ";
-      int actChoice = readMenuChoice();
+
+      mRUi.printSection("Choisir une action ACT");
+      mRUi.printMenu(actMenu);
+      mRUi.printPrompt("Votre choix [1-" + std::to_string(actList.size()) +
+                       "] > ");
+
+      int actChoice = mRUi.readMenuChoice();
+      if (actChoice == TerminalUI::kInputClosed) {
+        mRUi.printWarning("Flux d'entrée fermé pendant le combat.");
+        return CombatResult::PLAYER_DEFEATED;
+      }
+
       if (actChoice < 1 || actChoice > static_cast<int>(actList.size())) {
-        std::cout << "Choix invalide.\n";
+        mRUi.printError("Choix invalide.");
         break;
       }
+
       playerAct(actList[static_cast<size_t>(actChoice - 1)]);
+      playerSpentTurn = true;
       break;
     }
     case 3: {
       const Inventory &rInventory = mRPlayer.getInventory();
       const std::vector<Item> items = rInventory.listItems();
       if (items.empty()) {
-        std::cout << "Inventaire vide.\n";
+        mRUi.printWarning("Inventaire vide.");
         break;
       }
-      std::cout << "Choisir un item:\n";
+
+      std::vector<std::vector<std::string>> rows;
+      rows.reserve(items.size());
       for (size_t i = 0; i < items.size(); ++i) {
         const Item &rItem = items[i];
-        std::cout << (i + 1) << ") " << rItem.getName() << " x"
-                  << rInventory.getQuantity(rItem.getName()) << "\n";
+        rows.push_back({std::to_string(i + 1), rItem.getName(),
+                        std::to_string(rInventory.getQuantity(rItem.getName())),
+                        itemDescription(rItem)});
       }
-      std::cout << "> ";
-      int itemChoice = readMenuChoice();
+
+      mRUi.printSection("Choisir un item");
+      mRUi.printTable({"#", "Item", "Quantité", "Effet"}, rows);
+      mRUi.printPrompt("Votre choix [1-" + std::to_string(items.size()) +
+                       "] > ");
+
+      int itemChoice = mRUi.readMenuChoice();
+      if (itemChoice == TerminalUI::kInputClosed) {
+        mRUi.printWarning("Flux d'entrée fermé pendant le combat.");
+        return CombatResult::PLAYER_DEFEATED;
+      }
+
       if (itemChoice < 1 || itemChoice > static_cast<int>(items.size())) {
-        std::cout << "Choix invalide.\n";
+        mRUi.printError("Choix invalide.");
         break;
       }
+
       playerItem(items[static_cast<size_t>(itemChoice - 1)].getName());
+      playerSpentTurn = true;
       break;
     }
     case 4:
       if (playerMercy()) {
-        std::cout << "Vous épargnez le monstre.\n";
+        mRUi.printSuccess("Vous épargnez " + mRMonster.getName() + ".");
+        pushEvent("Vous épargnez " + mRMonster.getName() + ".");
         return CombatResult::SPARED;
       }
-      std::cout << "Mercy insuffisante.\n";
+      mRUi.printWarning(
+          "Mercy insuffisante: " + std::to_string(mRMonster.getMercy()) + "/" +
+          std::to_string(mRMonster.getMercyGoal()) + ".");
+      pushEvent("Vous tentez MERCY sans succès.");
+      playerSpentTurn = true;
       break;
     default:
-      std::cout << "Choix invalide.\n";
+      mRUi.printError("Choix invalide. Entrez un nombre de 1 à 4.");
       break;
     }
 
-    if (mRMonster.isAlive()) {
+    if (playerSpentTurn && mRMonster.isAlive()) {
       monsterTurn();
     }
   }
 
   if (!mRPlayer.isAlive()) {
-    std::cout << "Vous avez été vaincu.\n";
+    mRUi.printError("Vous avez été vaincu.");
     return CombatResult::PLAYER_DEFEATED;
   }
   if (!mRMonster.isAlive()) {
-    std::cout << "Vous avez vaincu le monstre.\n";
+    mRUi.printSuccess("Vous avez vaincu " + mRMonster.getName() + ".");
     return CombatResult::KILLED;
   }
+
   return CombatResult::SPARED;
 }
 
 void Combat::playerFight() {
   int damage = mRandomService.rollDamage(mRMonster.getMaxHp());
   mRMonster.takeDamage(damage);
-  std::cout << "Dégâts infligés: " << damage << "\n";
+  pushEvent("Vous frappez et infligez " + std::to_string(damage) + " dégâts.");
 }
 
 void Combat::playerAct(const std::string &rActId) {
   if (!mRCatalog.has(rActId)) {
-    std::cout << "Action ACT inconnue.\n";
+    mRUi.printError("Action ACT inconnue.");
     return;
   }
+
   const ActAction &action = mRCatalog.get(rActId);
   mRMonster.setMercy(mRMonster.getMercy() + action.getMercyDelta());
-  std::cout << action.getText() << "\n";
-  std::cout << "Mercy: " << mRMonster.getMercy() << "/"
-            << mRMonster.getMercyGoal() << "\n";
+  pushEvent(action.getText());
+  pushEvent("Mercy: " + std::to_string(mRMonster.getMercy()) + "/" +
+            std::to_string(mRMonster.getMercyGoal()));
 }
 
 void Combat::playerItem(const std::string &rItemName) {
+  const int hpBefore = mRPlayer.getHp();
   bool used = mRPlayer.getInventory().use(rItemName, mRPlayer);
   if (!used) {
-    std::cout << "Item indisponible.\n";
+    mRUi.printWarning("Item indisponible.");
+    return;
   }
+
+  const int healed = std::max(0, mRPlayer.getHp() - hpBefore);
+  pushEvent("Vous utilisez " + rItemName + " (" + std::to_string(healed) +
+            " HP récupérés).");
 }
 
 bool Combat::playerMercy() {
@@ -157,7 +220,16 @@ void Combat::monsterTurn() {
   if (!mRMonster.isAlive()) {
     return;
   }
+
   int damage = mRandomService.rollDamage(mRPlayer.getMaxHp());
   mRPlayer.takeDamage(damage);
-  std::cout << mRMonster.getName() << " attaque. Dégâts: " << damage << "\n";
+  pushEvent(mRMonster.getName() + " attaque et inflige " +
+            std::to_string(damage) + " dégâts.");
+}
+
+void Combat::pushEvent(const std::string &rText) {
+  mEventLog.push_back(rText);
+  if (mEventLog.size() > 12) {
+    mEventLog.erase(mEventLog.begin());
+  }
 }

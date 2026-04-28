@@ -23,6 +23,7 @@ add_executable(alterdune
   src/items/Item.cpp
   src/systems/Combat.cpp
   src/systems/Game.cpp
+  src/ui/TerminalUI.cpp
   src/util/RandomService.cpp
 )
 

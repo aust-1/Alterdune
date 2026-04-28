@@ -1,26 +1,14 @@
 #include "../../include/systems/Game.hpp"
 
 #include <cstddef>
-#include <iostream>
-#include <limits>
 #include <random>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "../../include/systems/Combat.hpp"
 
 namespace {
-int readMenuChoice() {
-  int choice = 0;
-  std::cin >> choice;
-  if (!std::cin) {
-    std::cin.clear();
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    return -1;
-  }
-  return choice;
-}
-
 const char *categoryToString(MonsterCategory category) {
   switch (category) {
   case MonsterCategory::NORMAL:
@@ -31,6 +19,18 @@ const char *categoryToString(MonsterCategory category) {
     return "BOSS";
   }
   return "INCONNUE";
+}
+
+const char *resultToString(CombatResult result) {
+  switch (result) {
+  case CombatResult::KILLED:
+    return "Élimine";
+  case CombatResult::SPARED:
+    return "Épargne";
+  case CombatResult::PLAYER_DEFEATED:
+    return "Défaite";
+  }
+  return "Inconnu";
 }
 
 std::string itemDescription(const Item &rItem) {
@@ -46,23 +46,28 @@ Game::Game(Player player) : mPlayer(std::move(player)), mIsGameOver(false) {}
 void Game::run() { mainMenu(); }
 
 void Game::showStartupSummary() const {
-  std::cout << "\n=== Partie initialisée ===\n";
-  std::cout << "Nom: " << mPlayer.getName() << "\n";
-  std::cout << "HP: " << mPlayer.getHp() << "/" << mPlayer.getMaxHp() << "\n";
-  std::cout << "Items:\n";
+  mUi.printBanner("ALTERDUNE", "A tactical tale of fights and mercy");
+  mUi.printSection("Session initialisée");
+  mUi.printStat("Nom", mPlayer.getName());
+  mUi.printProgressBar("HP", mPlayer.getHp(), mPlayer.getMaxHp());
+  mUi.printProgressBar("Victoires", mPlayer.getVictories(), 10);
 
   const Inventory &rInventory = mPlayer.getInventory();
   const std::vector<Item> items = rInventory.listItems();
+  mUi.printSection("Inventaire de depart");
   if (items.empty()) {
-    std::cout << "- Aucun item\n";
+    mUi.printWarning("Aucun item en reserve.");
     return;
   }
 
+  std::vector<std::vector<std::string>> rows;
+  rows.reserve(items.size());
   for (const Item &rItem : items) {
-    std::cout << "- " << rItem.getName() << " x"
-              << rInventory.getQuantity(rItem.getName()) << " ("
-              << itemDescription(rItem) << ")\n";
+    rows.push_back({rItem.getName(),
+                    std::to_string(rInventory.getQuantity(rItem.getName())),
+                    itemDescription(rItem)});
   }
+  mUi.printTable({"Item", "Quantité", "Effet"}, rows);
 }
 
 void Game::mainMenu() {
@@ -73,15 +78,19 @@ void Game::mainMenu() {
       return;
     }
 
-    std::cout << "\n=== ALTERDUNE ===\n";
-    std::cout << "1) Bestiaire\n";
-    std::cout << "2) Démarrer un combat\n";
-    std::cout << "3) Statistiques du personnage\n";
-    std::cout << "4) Items\n";
-    std::cout << "5) Quitter\n";
-    std::cout << "> ";
+    mUi.printBanner("ALTERDUNE", "Choisissez votre prochaine action");
+    mUi.printProgressBar("HP", mPlayer.getHp(), mPlayer.getMaxHp());
+    mUi.printProgressBar("Victoires", mPlayer.getVictories(), 10);
+    mUi.printMenu({"Bestiaire", "Démarrer un combat", "Statistiques", "Items",
+                   "Quitter"});
+    mUi.printPrompt("Votre choix [1-5] > ");
 
-    int choice = readMenuChoice();
+    int choice = mUi.readMenuChoice();
+    if (choice == TerminalUI::kInputClosed) {
+      mUi.printWarning("Flux d'entrée fermé. Fermeture du jeu.");
+      return;
+    }
+
     switch (choice) {
     case 1:
       showBestiary();
@@ -101,7 +110,7 @@ void Game::mainMenu() {
       isRunning = false;
       break;
     default:
-      std::cout << "Choix invalide.\n";
+      mUi.printError("Choix invalide. Entrez un nombre de 1 a 5.");
       break;
     }
   }
@@ -109,7 +118,7 @@ void Game::mainMenu() {
 
 bool Game::startCombat() {
   if (mMonsters.empty()) {
-    std::cout << "Aucun monstre disponible.\n";
+    mUi.printWarning("Aucun monstre disponible.");
     return true;
   }
 
@@ -118,12 +127,12 @@ bool Game::startCombat() {
   std::unique_ptr<Monster> monster = mMonsters[dist(sRng)]->clone();
   Monster &rMonster = *monster;
 
-  Combat combat(mPlayer, rMonster, mCatalog);
+  Combat combat(mPlayer, rMonster, mCatalog, mUi);
   CombatResult result = combat.start();
 
   if (result == CombatResult::PLAYER_DEFEATED || !mPlayer.isAlive()) {
     mIsGameOver = true;
-    std::cout << "Défaite.\n";
+    mUi.printError("Vous avez perdu le combat.");
     return false;
   }
 
@@ -138,86 +147,95 @@ bool Game::startCombat() {
                       rMonster.getMaxHp(), rMonster.getAtk(), rMonster.getDef(),
                       result);
   mBestiary.add(entry);
-  std::cout << "Combat terminé. Victoires: " << mPlayer.getVictories() << "\n";
+  mUi.printSuccess("Combat terminé: " + std::string(resultToString(result)) +
+                   ". Victoires: " + std::to_string(mPlayer.getVictories()) +
+                   "/10");
   return true;
 }
 
 void Game::showStats() const {
-  std::cout << "\n=== Statistiques ===\n";
-  std::cout << "Nom: " << mPlayer.getName() << "\n";
-  std::cout << "HP: " << mPlayer.getHp() << "/" << mPlayer.getMaxHp() << "\n";
-  std::cout << "Tués: " << mPlayer.getKills() << "\n";
-  std::cout << "Epargnés: " << mPlayer.getSpares() << "\n";
-  std::cout << "Victoires: " << mPlayer.getVictories() << "/10\n";
+  mUi.printBanner("STATISTIQUES", mPlayer.getName());
+  mUi.printProgressBar("HP", mPlayer.getHp(), mPlayer.getMaxHp());
+  mUi.printProgressBar("Victoires", mPlayer.getVictories(), 10);
+  mUi.printStat("Monstres tués", std::to_string(mPlayer.getKills()));
+  mUi.printStat("Monstres épargnés", std::to_string(mPlayer.getSpares()));
 }
 
 void Game::showItems() {
   while (true) {
-    std::cout << "\n=== Items ===\n";
+    mUi.printBanner("INVENTAIRE", "Utilisez un item hors combat");
     Inventory &rInventory = mPlayer.getInventory();
     const std::vector<Item> items = rInventory.listItems();
     if (items.empty()) {
-      std::cout << "Inventaire vide.\n";
+      mUi.printWarning("Inventaire vide.");
       return;
     }
 
+    std::vector<std::vector<std::string>> rows;
+    rows.reserve(items.size());
     for (size_t i = 0; i < items.size(); ++i) {
       const Item &rItem = items[i];
-      std::cout << (i + 1) << ") " << rItem.getName() << " x"
-                << rInventory.getQuantity(rItem.getName()) << " ("
-                << itemDescription(rItem) << ")\n";
+      rows.push_back({std::to_string(i + 1), rItem.getName(),
+                      std::to_string(rInventory.getQuantity(rItem.getName())),
+                      itemDescription(rItem)});
     }
-    std::cout << "0) Retour\n";
-    std::cout << "> ";
+    mUi.printTable({"#", "Item", "Quantité", "Effet"}, rows);
+    mUi.printPrompt("Votre choix [1-" + std::to_string(items.size()) +
+                    ", 0 retour] > ");
 
-    int choice = readMenuChoice();
+    int choice = mUi.readMenuChoice();
+    if (choice == TerminalUI::kInputClosed) {
+      return;
+    }
+
     if (choice == 0) {
       return;
     }
     if (choice < 1 || choice > static_cast<int>(items.size())) {
-      std::cout << "Choix invalide.\n";
+      mUi.printError("Choix invalide.");
       continue;
     }
 
     const Item &rItem = items[static_cast<size_t>(choice - 1)];
     if (!rInventory.use(rItem.getName(), mPlayer)) {
-      std::cout << "Item indisponible.\n";
+      mUi.printWarning("Item indisponible.");
       continue;
     }
-    std::cout << rItem.getName() << " utilise. HP: " << mPlayer.getHp() << "/"
-              << mPlayer.getMaxHp() << "\n";
+    mUi.printSuccess(rItem.getName() + " utilisé.");
+    mUi.printProgressBar("HP", mPlayer.getHp(), mPlayer.getMaxHp());
   }
 }
 
 void Game::showBestiary() const {
-  std::cout << "\n=== Bestiaire ===\n";
+  mUi.printBanner("BESTIAIRE", "Historique des rencontres");
   const std::vector<BestiaryEntry> &rEntries = mBestiary.list();
   if (rEntries.empty()) {
-    std::cout << "Aucun monstre vaincu.\n";
+    mUi.printInfo("Aucune entrée pour le moment.");
     return;
   }
+
+  std::vector<std::vector<std::string>> rows;
+  rows.reserve(rEntries.size());
   for (const BestiaryEntry &rEntry : rEntries) {
-    std::cout << "- " << rEntry.getMonsterName() << " | "
-              << categoryToString(rEntry.getCategory()) << " | HP "
-              << rEntry.getMaxHp() << " | ATK " << rEntry.getAtk() << " | DEF "
-              << rEntry.getDef() << " | Résultat "
-              << (rEntry.getResult() == CombatResult::KILLED ? "Tué"
-                                                             : "Epargné")
-              << "\n";
+    rows.push_back(
+        {rEntry.getMonsterName(), categoryToString(rEntry.getCategory()),
+         std::to_string(rEntry.getMaxHp()), std::to_string(rEntry.getAtk()),
+         std::to_string(rEntry.getDef()), resultToString(rEntry.getResult())});
   }
+  mUi.printTable({"Nom", "Categorie", "HP", "ATK", "DEF", "Résultat"}, rows);
 }
 
 void Game::checkEndings() const {
-  std::cout << "\n=== Fin de partie ===\n";
+  mUi.printBanner("FIN DE PARTIE", "Votre trajectoire est scellée");
   if (mPlayer.getKills() == 0 && mPlayer.getSpares() > 0) {
-    std::cout << "Fin Pacifiste\n";
+    mUi.printSuccess("Fin Pacifiste");
     return;
   }
   if (mPlayer.getSpares() == 0 && mPlayer.getKills() > 0) {
-    std::cout << "Fin Genocidaire\n";
+    mUi.printWarning("Fin Genocidaire");
     return;
   }
-  std::cout << "Fin Neutre\n";
+  mUi.printInfo("Fin Neutre");
 }
 
 Player &Game::getPlayer() { return mPlayer; }

@@ -7,6 +7,7 @@
 #include "../bestiary/Bestiary.hpp"
 #include "../entities/Monster.hpp"
 #include "../entities/Player.hpp"
+#include "../ui/TerminalUI.hpp"
 #include "../utils/Types.hpp"
 
 class Game {
@@ -37,4 +38,5 @@ private:
   ActCatalog mCatalog;
   std::vector<std::unique_ptr<Monster>> mMonsters;
   bool mIsGameOver;
+  TerminalUI mUi;
 };
