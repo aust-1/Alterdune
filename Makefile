@@ -1,6 +1,16 @@
 .PHONY: build
 
+BUILD_DIR := build
+TARGET := alterdune
+ROOT_DIR := $(CURDIR)
+CONFIG ?= Release # Default to Release if not specified
+
 build:
-	@echo "Building project..."
-	cmake -S . -B build
-	cmake --build build
+	@echo "Building $(TARGET)..."
+	cmake -S . -B $(BUILD_DIR) \
+		-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$(ROOT_DIR)" \
+		-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG="$(ROOT_DIR)" \
+		-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE="$(ROOT_DIR)" \
+		-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO="$(ROOT_DIR)" \
+		-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL="$(ROOT_DIR)"
+	cmake --build $(BUILD_DIR) --config $(CONFIG)
