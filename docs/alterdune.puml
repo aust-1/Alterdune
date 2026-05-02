@@ -20,7 +20,7 @@ enum CombatResult {
 }
 
 ' Entities
-class Entity {
+abstract class Entity {
   -mName: std::string
   -mHp: int
   -mMaxHp: int
